@@ -18,7 +18,7 @@ typedef struct {
 } Tag;
 
 /* Allocate space and initialize the tag */
-void tag_init(Tag* t, size_t n, fq_ctx_t ctx);
+void tag_init(Tag* t, size_t n, fq_ctx_t ctx, pairing_t p);
 
 /* Free the space the tag occupied */
 void tag_clear(Tag* t, size_t n, fq_ctx_t ctx);
