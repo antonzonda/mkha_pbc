@@ -8,6 +8,7 @@
 #include <flint/fq.h>
 #include <inttypes.h>
 #include <pbc/pbc.h>
+#include <gcrypt.h>
 
 /* Defines the key length in bytes for key in key space */
 #define KEY_LEN 32

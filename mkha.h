@@ -4,10 +4,12 @@
 #include "prf.h"
 #include "poly.h"
 #include "tag.h"
+#include <pbc/pbc.h>
 
 /* Public parameters */
 typedef struct {
-    /* Prime number p in fmpz, represent the message space M = Z_p  */
+    /* Prime number p, represent the message space M = Z_p  */
+    mpz_t p;
     fmpz_t pf; 
     /* Represent the identity space ID = [n], user number */
     uint64_t n;
@@ -37,16 +39,10 @@ typedef struct {
     uint64_t tau;
 } Label;
 
-/* Initialize the groups */
-int mkha_init();
-
-/* Clean the groups */
-int mkha_close();
-
 
 /** The setup algorithm
  */
-void set_up(PublicPara* pp, uint64_t n);
+void set_up(PublicPara* pp, uint64_t n, uint32_t lambda);
 
 
 /** The key generation function
