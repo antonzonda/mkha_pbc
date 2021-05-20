@@ -141,33 +141,33 @@ void GTE_cross(Tag* res, Tag* sig1, Tag* sig2, PublicPara* pp) {
 
     element_t t1, t2; // Some temporary variables
     element_init_G1(t1, pp->pairing);
-    g1_set_infty(t1);
-    g1_new(t2);
-    g1_set_infty(t2);
+    element_set0(t1);
+    element_init_G1(t2, pp->pairing);
+    element_set0(t2);
 
     element_t t3, t4;
-    gt_new(t3);
-    gt_set_unity(t3);
-    gt_new(t4);
-    gt_set_unity(t4);
+    element_init_GT(t3, pp->pairing);
+    element_set1(t3);
+    element_init_GT(t4, pp->pairing);
+    element_set1(t4);
 
     // Calculate Y_r
     for (r = 0; r < n; r++) {
-        g1_mul(t1, sig1->Y[r], sig1->yb);
-        g1_mul(t2, sig2->Y[r], sig2->yb);
-        g1_add(res->Y[r], t1, t2);
+        element_mul(t1, sig1->Y[r], sig1->Y);
+        element_mul(t2, sig2->Y[r], sig2->Y);
+        element_add(res->Y[r], t1, t2);
     }
 
     // Calculate Z_(r,s)
     for (r = 1; r <= n; r++) {
         i = ((r-1)*n + (r-1)*(r-2)/2);
         s = r;
-        pc_map(res->Z[i], sig1->Y[r-1], sig2->Y[s-1]);
+        element_pairing(res->Z[i], sig1->Y[r-1], sig2->Y[s-1]);
         i++;
         for (s = r + 1; s <= n; s++) {
-            pc_map(t3, sig1->Y[r-1], sig2->Y[s-1]);
-            pc_map(t4, sig1->Y[s-1], sig2->Y[r-1]);
-            gt_mul(res->Z[i], t3, t4);
+            element_pairing(t3, sig1->Y[r-1], sig2->Y[s-1]);
+            element_pairing(t4, sig1->Y[s-1], sig2->Y[r-1]);
+            element_mul(res->Z[i], t3, t4);
             i++;
         }
     }
@@ -190,8 +190,8 @@ void GTE_dot(Tag* res, fq_t c, Tag* sig, PublicPara* pp) {
 
     // Calculate Y_r
     for (r = 0; r < n; r++) {
-        g1_mul(res->Y[r], sig->Y[r], cb);
-        g1_norm(res->Y[r], res->Y[r]);
+        element_pow_mpz(res->Y[r], sig->Y[r], c_mpz);
+        //g1_norm(res->Y[r], res->Y[r]);
     }
 
     // Calculate Z_(r,s)
@@ -213,7 +213,7 @@ void GTE_add(Tag* res, Tag* sig1, Tag* sig2, PublicPara* pp) {
     fq_add(res->y, sig1->y, sig2->y, pp->ctx); // Get message y
 
     for (r = 0; r < n; r++) {
-        g1_add(res->Y[r], sig1->Y[r], sig2->Y[r]);
+        element_add(res->Y[r], sig1->Y[r], sig2->Y[r]);
     }
 
     for (r = 1; r <= n; r++) {
@@ -242,27 +242,31 @@ int Ver(Poly* f, Label* l, uint64_t Delta, VerKey* vk, fq_t m, uint64_t* id_set,
     Poly omega;
     cf_eval_off(vk->K, l, f, id_t_list, &omega, pp);
 
-    gt_t W1;
-    gt_new(W1);
+    element_t W1;
+    element_init_GT(W1, pp->pairing);
     cf_eval_on(vk->K, Delta, id_set, &omega, W1, pp);
 
     // temporary variables
-    gt_t res, t2, t3;
-    gt_new(res); gt_new(t2); gt_new(t3);
-    bn_t b1, b2, b3;
-    bn_new(b1);
+    element_t res, t2, t3;
+    element_init_GT(res, pp->pairing); element_init_GT(t2, pp->pairing); element_init_GT(t3, pp->pairing);
+    mpz_t b1, b2, b3;
+    mpz_init(b1);
     fq_t f1;
     fq_init(f1, pp->ctx);
 
     // Calculate the right hand side
-    gt_t W2;
-    gt_new(W2);
-    gt_exp(res, pp->gt, sigma->yb);
+    element_t W2;
+    element_init_GT(W2, pp->pairing);
+    // convert y to mpz
+    mpz_t y_mpz;
+    mpz_init(y_mpz);
+    fq2mpz(y_mpz, sigma->y, pp->ctx);
+    element_pow_mpz(res, pp->gt, y_mpz);  // ??????
     for (r = 0; r < pp->n; r++) {
-        pc_map(t2, sigma->Y[r], pp->g);
+        element_pairing(t2, sigma->Y[r], pp->g);
         fq2bn(b1, vk[r].alpha, pp->ctx);
-        gt_exp(t3, t2, b1);
-        gt_mul(res, t3, res);
+        element_pow_mpz(t3, t2, b1);
+        element_mul(res, t3, res);
     }
 
     for (r = 1; r <= pp->n; r++) {
@@ -270,13 +274,13 @@ int Ver(Poly* f, Label* l, uint64_t Delta, VerKey* vk, fq_t m, uint64_t* id_set,
         for (s = r; s <= pp->n; s++) {
             fq_mul(f1, vk[r-1].alpha, vk[s-1].alpha, pp->ctx);
             fq2bn(b1, f1, pp->ctx);
-            gt_exp(t3, sigma->Z[i], b1);
-            gt_mul(res, t3, res);
+            element_pow_mpz(t3, sigma->Z[i], b1);
+            element_mul(res, t3, res);
             i++;
         }
     }
 
-    r3 = gt_cmp(W1, W2);
+    r3 = element_cmp(W1, W2);
 
     gt_free(res); gt_free(t2); gt_free(t3);
     bn_free(b1); fq_clear(f1, pp->ctx);
