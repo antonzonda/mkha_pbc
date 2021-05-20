@@ -4,52 +4,56 @@ void KG(Key* K) {
     K = (Key*) malloc(sizeof(Key));
     K->k1 = (uint8_t*) malloc(KEY_LEN);
     K->k2 = (uint8_t*) malloc(KEY_LEN);
-    rand_bytes(K->k1, KEY_LEN);
-    rand_bytes(K->k2, KEY_LEN);
+    srand(time(NULL));
+    // We use rand to obtain a random bytestream
+    for (int i = 0; i < KEY_LEN; i++) {
+        K->k1[i] = rand();
+        K->k2[i] = rand();
+    }
 }
 
-void F(Key* K, uint8_t* delta, uint8_t* l, element_t g, element_t r);
-    uint8_t mac1[RLC_MD_LEN];
-    uint8_t mac2[RLC_MD_LEN];
-    bn_t u, v, a, b;
-    g1_t r1;
+void F(Key* K, uint8_t* delta, uint8_t* l, element_t g, element_t r, mpz_t p) {
+    mpz_t u, v, a, b;
+    element_t r1, r2;
+    // allocate the memory
+    mpz_init(u); mpz_init(v);
+    mpz_init(a); mpz_init(b);
+    element_init_same_as(r1, g);
 
-    // Allocate 
-    bn_new(u); bn_new(v);
-    bn_new(a); bn_new(b);
+    // run the pseudo random function
+    PRF_F(u, v, K->k1, l, 16, p);
+    PRF_F(a, b, K->k2, delta, 8, p);
 
-    md_hmac(mac1, delta, 8, K->k1, KEY_LEN);
-    md_hmac(mac2, l, 16, K->k2, KEY_LEN);
+    element_mul_mpz(r1, g, a);
+    element_mul_mpz(r1, r1, u);
 
-    bn_read_bin(u, mac2, BIN_SIZE);
-    bn_read_bin(v, mac2 + BIN_SIZE, BIN_SIZE);
-    bn_read_bin(a, mac1, BIN_SIZE);
-    bn_read_bin(b, mac1 + BIN_SIZE, BIN_SIZE);
+    element_mul_mpz(r, g, b);
+    element_mul_mpz(r, r, v);
+    element_add(r, r, r1);
 
-    g1_new(r1);
-    g1_mul(r1, g, a);
-    g1_mul(r1, r1, u);
-    g1_norm(r1, r1); /* Not sure what does it do */
-    g1_mul(r, g, b);
-    g1_mul(r, r, v);
-    g1_add(r, r, r1);
-    g1_norm(r, r);
-
-    // free
-    bn_free(u); bn_free(v);
-    bn_free(a); bn_free(b);
+    // free the memory
+    mpz_clear(u); mpz_clear(v);
+    mpz_clear(a); mpz_clear(b);
+    element_clear(r1);
 }
 
-void PRF_F(fq_t r1, fq_t r2, uint8_t* k, uint8_t* data, size_t data_size, fq_ctx_t ctx);
-    uint8_t mac[RLC_MD_LEN];
+void PRF_F(mpz_t r1, mpz_t r2, uint8_t* k, uint8_t* data, size_t data_size, mpz_t p) {
+    uint8_t hash[MD_SIZE];
+    gcry_md_hd_t hd;
 
-    md_hmac(mac, data, data_size, k, KEY_LEN);
-    bn_read_bin(b1, mac, BIN_SIZE);
-    bn_read_bin(b2, mac + BIN_SIZE, BIN_SIZE);
+    gcry_md_open(&hd, HASH_ALG, GCRY_MD_FLAG_HMAC);
+    gcry_md_setkey(hd, k, KEY_LEN);
+    gcry_md_write(hd, (void*) data, data_size);
+    gcry_md_extract(hd, HASH_ALG, hash, MD_SIZE);
 
-    bn2fq(r1, b1, ctx);
-    bn2fq(r2, b2, ctx);
+    mpz_import(r1, BIN_SIZE, 1, 1, 0, 0, hash);
+    mpz_import(r2, BIN_SIZE, 1, 1, 0, 0, hash + BIN_SIZE);
 
+    mpz_mod(r1, r1, p);
+    mpz_mod(r2, r2, p);
+
+    gcry_md_close(hd);
+    free(hash);
 }
 
 void clear_key(Key* K) {
