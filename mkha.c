@@ -52,36 +52,36 @@ void auth(VerKey* sk, uint64_t delta, Label* l, fq_t m, Tag* sig, PublicPara* pp
     // Set the Y_r
     element_t Y;
     element_init_G1(Y, pp->pairing);
-    g1_set_infty(Y);
-
-    F(sk->K, (uint8_t*) &delta, (uint8_t*) l, pp->g, Y);
+    element_set0(Y);
+    element_t R;
+    element_init_G1(R, pp->pairing);
+    F(sk->K, (uint8_t*) &delta, (uint8_t*) l, pp->g, R, pp->p);
 
     mpz_t m_mpz; /* Message in bn */
     mpz_init(m_mpz);
     fq2mpz(m_mpz, m, pp->ctx);
 
-    bn_t neg_m_bn; /* -m */
-    bn_new(neg_m_bn);
-    bn_neg(neg_m_bn, m_bn);
+    mpz_t neg_m_mpz; /* -m */
+    mpz_init(neg_m_mpz);
+    mpz_neg(neg_m_mpz, m_mpz);
 
-    g1_t x;
-    g1_new(x);
-    g1_set_infty(x);
-    g1_mul(x, x, neg_m_bn);
-    g1_norm(x, x);
-    g1_add(Y, x, Y);
-    g1_norm(Y, Y);
+    element_t x;
+    element_init_G1(x, pp->pairing);
+    element_set0(x);
+    element_mul_mpz(x, pp->g, neg_m_mpz);
+    element_add(Y, x, Y);
+    
     // Set alpha^{-1}
     fq_t alpha_inv;
     fq_init(alpha_inv, pp->ctx);
     fq_inv(alpha_inv, sk->alpha, pp->ctx);
-    bn_t alpha_inv_b;
-    bn_new(alpha_inv_b);
-    fq2bn(alpha_inv_b, alpha_inv, pp->ctx);
+    mpz_t alpha_inv_b;
+    mpz(alpha_inv_b);
+    fq2mpz(alpha_inv_b, alpha_inv, pp->ctx);
 
     // Allocate the list
-    tag_init(sig, pp->n, pp->ctx);
-    g1_mul(sig->Y[id], Y, alpha_inv_b);
+    tag_init(sig, pp->n, pp->ctx, pp->pairing);
+    element_mul_mpz(sig->Y[id], Y, alpha_inv_b);
 
     fq_clear(alpha_inv, pp->ctx);
 }
