@@ -1,6 +1,6 @@
 # makefile
 FILES = test.c mkha.c poly.c prf.c tag.c
-CFLAGS = -I /usr/local/include/flint -lgmp -lflint -L. -lpbc 
+CFLAGS = -I /usr/local/include/flint -lgmp -lflint -L. -lpbc -lgcrypt -g
 CC = gcc
 
 test: 

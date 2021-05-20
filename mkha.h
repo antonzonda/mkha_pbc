@@ -96,8 +96,8 @@ void GTE_add(Tag* res, Tag* sig1, Tag* sig2, PublicPara* pp);
  *  @param[in] m        message
  *  
  */
-// int Ver(Poly* f, Label* l, uint64 Delta, VerKey* vk, g1_t m, Tag* sigma, PublicPara* pp);
-
+int Ver(Poly* f, Label* l, uint64_t Delta, VerKey* vk, fq_t m, uint64_t* id_set, uint64_t* id_t_list,
+        Tag* sigma, PublicPara* pp);
 
 /* Takes in Key and f outputs omega_f */
 void cf_eval_off(Key* K, Label* l, Poly* f, uint64_t* id, Poly* omega_f, PublicPara* pp);

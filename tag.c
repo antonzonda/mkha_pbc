@@ -10,12 +10,14 @@ void tag_init(Tag* t, size_t n, fq_ctx_t ctx, pairing_t p) {
 
     for (r = 0; r < n; r++) {
         element_init_G1(t->Y[r], p);
+        element_set0(t->Y[r]);
     }
 
     for (r = 1; r <= n; r++) {
         i = ((r-1)*n + (r-1)*(r-2)/2);
         for (s = r; s <= n; s++) {
             element_init_GT(t->Z[i], p);
+            element_set1(t->Z[i]);
             i++;
         }
     }

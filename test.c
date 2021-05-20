@@ -19,29 +19,26 @@ void try(uint32_t lambda, size_t t, size_t n, uint64_t delta) {
     // Key gen, that is, the i-th key indicates the i-th user
     VerKey* vk = (VerKey *) malloc(sizeof(VerKey) * n);
     for (i = 0; i < n; i++) {
-        vk[i].id = i;
-        key_gen(pp, i, &(vk[i].K));
+        key_gen(pp, i, &(vk[i]));
     }
-
     // Now we randomly generate some data for each user
     // Then do the authentication or produce the tag
     // Note that we here supposedly have t = O(n^2)
-    Label* l = (Label *) malloc(sizeof(l) * t);
+    Label* l = (Label *) malloc(sizeof(Label) * t);
     Tag* s = (Tag *) malloc(sizeof(Tag) * t);
     fq_t* m = (fq_t *) malloc(sizeof(fq_t) * t);
     for (i = 0; i < t; i++) {
-        id = i / n;
+        id = i % n;
         id_t_list[i] = id;
         l[i].id = id;
-        l[i].tau = i % n;
+        l[i].tau = i / n;
         // Generate the message
         fq_init(m[i], pp->ctx);
         fq_rand(m[i], state, pp->ctx);
         
         // Generate the tag
-        auth(&vk[id], delta, &l[i], m[i], &s[i], pp);
+        auth(&(vk[id]), delta, &l[i], m[i], &s[i], pp);
     }
-
     // Generate a random quadratic function
     Poly *f;
     poly_rand_init(f, t, pp->ctx);
@@ -68,8 +65,8 @@ void try(uint32_t lambda, size_t t, size_t n, uint64_t delta) {
 }
 
 int main() {
-    mkha_init();
-    try(50, 500, 50, 1);
-    mkha_close();
+
+    try(50, 10, 5, 1);
+    
     return 0;
 }

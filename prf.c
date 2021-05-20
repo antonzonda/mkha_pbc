@@ -1,14 +1,14 @@
 #include "prf.h"
 
 void KG(Key* K) {
-    K = (Key*) malloc(sizeof(Key));
+    // K = (Key*) malloc(sizeof(Key));
     K->k1 = (uint8_t*) malloc(KEY_LEN);
     K->k2 = (uint8_t*) malloc(KEY_LEN);
     srand(time(NULL));
     // We use rand to obtain a random bytestream
     for (int i = 0; i < KEY_LEN; i++) {
-        K->k1[i] = rand();
-        K->k2[i] = rand();
+        K->k1[i] = (uint8_t) rand();
+        K->k2[i] = (uint8_t) rand();
     }
 }
 
@@ -53,7 +53,6 @@ void PRF_F(mpz_t r1, mpz_t r2, uint8_t* k, uint8_t* data, size_t data_size, mpz_
     mpz_mod(r2, r2, p);
 
     gcry_md_close(hd);
-    free(hash);
 }
 
 void clear_key(Key* K) {

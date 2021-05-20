@@ -4,15 +4,30 @@ static void fq2mpz(mpz_t out, fq_t in, fq_ctx_t ctx) {
     fmpz_t temp;
     fmpz_init(temp);
     fmpz_set_str(temp, fq_get_str_pretty(in, ctx), 10);
-    fmpz_set_mpz(out , temp);
+    fmpz_get_mpz(out , temp);
     fmpz_clear(temp);
+}
+
+static void mpz2fq(fq_t out, mpz_t in, fq_ctx_t ctx) {
+    fmpz_t temp;
+    fmpz_init(temp);
+    fmpz_set_mpz(temp, in);
+    fq_set_fmpz(out, temp, ctx);
 }
 
 void set_up(PublicPara* pp, uint64_t n, uint32_t lambda) {
     /* Choose a description of pp */
-    mpz_init(pp->p);
-    pbc_mpz_randomb(pp->p, lambda);
+    pp->n = n; // Set n
 
+    // Generate the prime number
+    mpz_init(pp->p);
+    mp_limb_t p;
+    flint_rand_t state;
+    flint_randinit(state);
+    p = n_randprime(state, lambda, 1);
+    mpz_set_ui(pp->p, p);
+
+    // Set pairing
     pbc_param_t par;
     pbc_param_init_a1_gen(par, pp->p);
     // init pairing
@@ -23,14 +38,22 @@ void set_up(PublicPara* pp, uint64_t n, uint32_t lambda) {
     element_random(pp->g);
     element_init_GT(pp->gt, pp->pairing);
     element_random(pp->gt);
+
+    // init ctx
+    fmpz_t p1;
+    fmpz_init(p1);
+    fmpz_set_mpz(p1, pp->p);
+    fq_ctx_init(pp->ctx, p1, 1, "ctx");
     
+    // free memory
+    fmpz_clear(p1);
     pbc_param_clear(par);
+    flint_randclear(state);
 }
 
 void key_gen(PublicPara* pp, uint64_t id, VerKey* vk) {
-    Key* K;
-    KG(K);
-    vk->K = K;
+    vk->K = (Key*) malloc(sizeof(Key));
+    KG(vk->K); // Generate the keys
     vk->id = id;
     // Set alpha <--Z_p*
     fq_init(vk->alpha, pp->ctx);
@@ -75,15 +98,22 @@ void auth(VerKey* sk, uint64_t delta, Label* l, fq_t m, Tag* sig, PublicPara* pp
     fq_t alpha_inv;
     fq_init(alpha_inv, pp->ctx);
     fq_inv(alpha_inv, sk->alpha, pp->ctx);
-    mpz_t alpha_inv_b;
-    mpz(alpha_inv_b);
-    fq2mpz(alpha_inv_b, alpha_inv, pp->ctx);
+    mpz_t alpha_inv_m;
+    mpz_init(alpha_inv_m);
+    fq2mpz(alpha_inv_m, alpha_inv, pp->ctx);
 
     // Allocate the list
     tag_init(sig, pp->n, pp->ctx, pp->pairing);
-    element_mul_mpz(sig->Y[id], Y, alpha_inv_b);
+    // Set Y[id]
+    element_mul_mpz(sig->Y[id], Y, alpha_inv_m);
 
+    // Free memory
     fq_clear(alpha_inv, pp->ctx);
+    element_clear(x);
+    element_clear(Y);
+    element_clear(R);
+    mpz_clear(m_mpz); 
+    mpz_clear(neg_m_mpz);
 }
 
 void eval(Poly* f, Tag* sig, Tag* sig_out, uint64_t* id_set, PublicPara* pp) {
@@ -123,7 +153,7 @@ void eval(Poly* f, Tag* sig, Tag* sig_out, uint64_t* id_set, PublicPara* pp) {
         indi = !indi;
     }
 
-    tag_init(sig_out, pp->n, pp->ctx);
+    tag_init(sig_out, pp->n, pp->ctx, pp->pairing);
     tag_copy(sig_out, &res[!indi], pp->n, pp->ctx);
 
     tag_clear(&t1, pp->n, pp->ctx);
@@ -153,8 +183,8 @@ void GTE_cross(Tag* res, Tag* sig1, Tag* sig2, PublicPara* pp) {
 
     // Calculate Y_r
     for (r = 0; r < n; r++) {
-        element_mul(t1, sig1->Y[r], sig1->Y);
-        element_mul(t2, sig2->Y[r], sig2->Y);
+        element_mul(t1, sig1->Y[r], sig1->Y[r]);
+        element_mul(t2, sig2->Y[r], sig2->Y[r]);
         element_add(res->Y[r], t1, t2);
     }
 
@@ -173,10 +203,10 @@ void GTE_cross(Tag* res, Tag* sig1, Tag* sig2, PublicPara* pp) {
     }
 
     // free the things allocated
-    g1_free(t1);
-    g1_free(t2);
-    gt_free(t3);
-    gt_free(t4);
+    element_clear(t1);
+    element_clear(t2);
+    element_clear(t3);
+    element_clear(t4);
 }
 
 void GTE_dot(Tag* res, fq_t c, Tag* sig, PublicPara* pp) {
@@ -191,7 +221,6 @@ void GTE_dot(Tag* res, fq_t c, Tag* sig, PublicPara* pp) {
     // Calculate Y_r
     for (r = 0; r < n; r++) {
         element_pow_mpz(res->Y[r], sig->Y[r], c_mpz);
-        //g1_norm(res->Y[r], res->Y[r]);
     }
 
     // Calculate Z_(r,s)
@@ -264,7 +293,7 @@ int Ver(Poly* f, Label* l, uint64_t Delta, VerKey* vk, fq_t m, uint64_t* id_set,
     element_pow_mpz(res, pp->gt, y_mpz);  // ??????
     for (r = 0; r < pp->n; r++) {
         element_pairing(t2, sigma->Y[r], pp->g);
-        fq2bn(b1, vk[r].alpha, pp->ctx);
+        fq2mpz(b1, vk[r].alpha, pp->ctx);
         element_pow_mpz(t3, t2, b1);
         element_mul(res, t3, res);
     }
@@ -273,7 +302,7 @@ int Ver(Poly* f, Label* l, uint64_t Delta, VerKey* vk, fq_t m, uint64_t* id_set,
         i = ((r-1)*pp->n + (r-1)*(r-2)/2);
         for (s = r; s <= pp->n; s++) {
             fq_mul(f1, vk[r-1].alpha, vk[s-1].alpha, pp->ctx);
-            fq2bn(b1, f1, pp->ctx);
+            fq2mpz(b1, f1, pp->ctx);
             element_pow_mpz(t3, sigma->Z[i], b1);
             element_mul(res, t3, res);
             i++;
@@ -282,9 +311,11 @@ int Ver(Poly* f, Label* l, uint64_t Delta, VerKey* vk, fq_t m, uint64_t* id_set,
 
     r3 = element_cmp(W1, W2);
 
-    gt_free(res); gt_free(t2); gt_free(t3);
-    bn_free(b1); fq_clear(f1, pp->ctx);
-    gt_free(W1); gt_free(W2);
+    // Free memory
+    element_clear(res); element_clear(t2); element_clear(t3);
+    mpz_clear(b1); fq_clear(f1, pp->ctx);
+    element_clear(W1); element_clear(W2);
+    
     return r1 * r2 * r3;
 }
 
@@ -297,10 +328,16 @@ void cf_eval_off(Key* K, Label* l, Poly* f, uint64_t* id, Poly* omega_f, PublicP
     // Use the pseudo random function
     fq_t u[f->t];
     fq_t v[f->t];
+    // Temporary variable
+    mpz_t u1, v1;
+    mpz_init(u1); mpz_init(v1);
+
     for (i = 0; i < f->t; i++) {
         fq_init(u[i], pp->ctx);
         fq_init(v[i], pp->ctx);
-        PRF_F(u[i], v[i], K[id[i]].k1, (uint8_t*) l, 16, pp->ctx);
+        PRF_F(u1, v1, K[id[i]].k1, (uint8_t*) l, 16, pp->p);
+        mpz2fq(u[i], u1, pp->ctx);
+        mpz2fq(v[i], v1, pp->ctx);
     }
 
     fq_t temp;
@@ -338,20 +375,30 @@ void cf_eval_off(Key* K, Label* l, Poly* f, uint64_t* id, Poly* omega_f, PublicP
 
     // free
     fq_clear(temp, pp->ctx);
+    mpz_clear(u1); mpz_clear(v1);
+    for (i = 0; i < f->t; i++) {
+        fq_clear(u[i], pp->ctx);
+        fq_clear(v[i], pp->ctx);
+    }
 }
 
-void cf_eval_on(Key* K, uint64_t Delta, uint64_t* id_array, Poly* omega_f, gt_t W, PublicPara* pp) {
+void cf_eval_on(Key* K, uint64_t Delta, uint64_t* id_array, Poly* omega_f, element_t W, PublicPara* pp) {
     size_t i, j, id;
     size_t t = omega_f->t / 2;
 
     fq_t a[pp->n];
     fq_t b[pp->n];
+    // Temporary variable
+    mpz_t a1, b1;
+    mpz_init(a1); mpz_init(b1);
     
     for (j = 0; j < pp->n; j++) {
         fq_init(a[j], pp->ctx);
         fq_init(b[j], pp->ctx);
 
-        PRF_F(a[j], b[j], K[j].k2, (uint8_t *) &Delta, 8, pp->ctx);
+        PRF_F(a1, b1, K[j].k2, (uint8_t *) &Delta, 8, pp->p);
+        mpz2fq(a[i], a1, pp->ctx);
+        mpz2fq(b[i], b1, pp->ctx);
     }
 
     // Set the input to the \omega_f
@@ -368,5 +415,12 @@ void cf_eval_on(Key* K, uint64_t Delta, uint64_t* id_array, Poly* omega_f, gt_t 
     // Evaluation
     fq_t w;
     poly_eval(omega_f, x_in, w, pp->ctx);
+
+    // free
+    mpz_clear(a1); mpz_clear(b1);
+    for (j = 0; j < pp->n; j++) {
+        fq_clear(a[j], pp->ctx);
+        fq_clear(b[j], pp->ctx);
+    }
 }
 
