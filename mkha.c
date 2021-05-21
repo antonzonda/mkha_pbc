@@ -422,6 +422,12 @@ void cf_eval_on(VerKey* K, uint64_t Delta, uint64_t* id_array, Poly* omega_f, el
     fq_t w;
     fq_init(w, pp->ctx);
     poly_eval(omega_f, x_in, w, pp->ctx);
+    // Result in mpz
+    mpz_t w_m;
+    mpz_init(w_m);
+    fq2mpz(w_m, w, pp->ctx);
+
+    element_pow_mpz(W, pp->gt, w_m);
 
     // free
     mpz_clear(a1); mpz_clear(b1);
