@@ -2,7 +2,6 @@
 
 
 void poly_rand_init(Poly* f, size_t t, fq_ctx_t ctx) {
-    f = (Poly *) malloc(sizeof(Poly)); 
     size_t i, j;
 
     f->t = t;
@@ -42,7 +41,6 @@ void poly_clear(Poly* f, fq_ctx_t ctx) {
 
     free(f->eta);
     free(f->xi);
-    free(f);
 }
 
 

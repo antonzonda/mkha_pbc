@@ -189,8 +189,8 @@ void GTE_cross(Tag* res, Tag* sig1, Tag* sig2, PublicPara* pp) {
     }
 
     // Calculate Z_(r,s)
+    i = 0;
     for (r = 1; r <= n; r++) {
-        i = ((r-1)*n + (r-1)*(r-2)/2);
         s = r;
         element_pairing(res->Z[i], sig1->Y[r-1], sig2->Y[s-1]);
         i++;
@@ -224,8 +224,9 @@ void GTE_dot(Tag* res, fq_t c, Tag* sig, PublicPara* pp) {
     }
 
     // Calculate Z_(r,s)
+    i = 0;
     for (r = 1; r <= n; r++) {
-        i = ((r-1)*n + (r-1)*(r-2)/2);
+        // i = ((r-1)*n + (r-1)*(r-2)/2);
         for (s = r; s <= n; s++) {
             element_pow_mpz(res->Z[i], sig->Z[i], c_mpz);
             i++;
@@ -245,8 +246,9 @@ void GTE_add(Tag* res, Tag* sig1, Tag* sig2, PublicPara* pp) {
         element_add(res->Y[r], sig1->Y[r], sig2->Y[r]);
     }
 
+    i = 0;
     for (r = 1; r <= n; r++) {
-        i = ((r-1)*n + (r-1)*(r-2)/2);
+        // i = ((r-1)*n + (r-1)*(r-2)/2);
         for (s = r; s <= n; s++) {
             element_mul(res->Z[i], sig1->Z[i], sig2->Z[i]);
             i++;
@@ -254,7 +256,7 @@ void GTE_add(Tag* res, Tag* sig1, Tag* sig2, PublicPara* pp) {
     }
 }
 
-int Ver(Poly* f, Label* l, uint64_t Delta, VerKey* vk, fq_t m, uint64_t* id_set, uint64_t* id_t_list,
+int ver(Poly* f, Label* l, uint64_t Delta, VerKey* vk, fq_t m, uint64_t* id_set, uint64_t* id_t_list,
         Tag* sigma, PublicPara* pp) {
 
     int r1 = 0, r2 = 1, r3 = 0;
@@ -269,15 +271,17 @@ int Ver(Poly* f, Label* l, uint64_t Delta, VerKey* vk, fq_t m, uint64_t* id_set,
     }
 
     Poly omega;
-    cf_eval_off(vk->K, l, f, id_t_list, &omega, pp);
+    cf_eval_off(vk, l, f, id_t_list, &omega, pp);
 
     element_t W1;
     element_init_GT(W1, pp->pairing);
-    cf_eval_on(vk->K, Delta, id_set, &omega, W1, pp);
+    cf_eval_on(vk, Delta, id_t_list, &omega, W1, pp);
 
     // temporary variables
     element_t res, t2, t3;
-    element_init_GT(res, pp->pairing); element_init_GT(t2, pp->pairing); element_init_GT(t3, pp->pairing);
+    element_init_GT(res, pp->pairing); 
+    element_init_GT(t2, pp->pairing); 
+    element_init_GT(t3, pp->pairing);
     mpz_t b1, b2, b3;
     mpz_init(b1);
     fq_t f1;
@@ -290,7 +294,8 @@ int Ver(Poly* f, Label* l, uint64_t Delta, VerKey* vk, fq_t m, uint64_t* id_set,
     mpz_t y_mpz;
     mpz_init(y_mpz);
     fq2mpz(y_mpz, sigma->y, pp->ctx);
-    element_pow_mpz(res, pp->gt, y_mpz);  // ??????
+    element_pow_mpz(res, pp->gt, y_mpz);    // gt^y
+
     for (r = 0; r < pp->n; r++) {
         element_pairing(t2, sigma->Y[r], pp->g);
         fq2mpz(b1, vk[r].alpha, pp->ctx);
@@ -298,8 +303,9 @@ int Ver(Poly* f, Label* l, uint64_t Delta, VerKey* vk, fq_t m, uint64_t* id_set,
         element_mul(res, t3, res);
     }
 
+    i = 0;
     for (r = 1; r <= pp->n; r++) {
-        i = ((r-1)*pp->n + (r-1)*(r-2)/2);
+        // i = ((r-1)*pp->n + (r-1)*(r-2)/2);
         for (s = r; s <= pp->n; s++) {
             fq_mul(f1, vk[r-1].alpha, vk[s-1].alpha, pp->ctx);
             fq2mpz(b1, f1, pp->ctx);
@@ -319,7 +325,7 @@ int Ver(Poly* f, Label* l, uint64_t Delta, VerKey* vk, fq_t m, uint64_t* id_set,
     return r1 * r2 * r3;
 }
 
-void cf_eval_off(Key* K, Label* l, Poly* f, uint64_t* id, Poly* omega_f, PublicPara* pp) {
+void cf_eval_off(VerKey* K, Label* l, Poly* f, uint64_t* id, Poly* omega_f, PublicPara* pp) {
     size_t i, j;
     omega_f->t = 2 * f->t;
     omega_f->xi = (fq_t *) malloc(sizeof(fq_t) * omega_f->t * omega_f->t);
@@ -335,7 +341,7 @@ void cf_eval_off(Key* K, Label* l, Poly* f, uint64_t* id, Poly* omega_f, PublicP
     for (i = 0; i < f->t; i++) {
         fq_init(u[i], pp->ctx);
         fq_init(v[i], pp->ctx);
-        PRF_F(u1, v1, K[id[i]].k1, (uint8_t*) l, 16, pp->p);
+        PRF_F(u1, v1, K[id[i]].K->k1, (uint8_t*) l, 16, pp->p);
         mpz2fq(u[i], u1, pp->ctx);
         mpz2fq(v[i], v1, pp->ctx);
     }
@@ -349,7 +355,7 @@ void cf_eval_off(Key* K, Label* l, Poly* f, uint64_t* id, Poly* omega_f, PublicP
         fq_mul(omega_f->eta[i], f->eta[i], u[i], pp->ctx);
 
         fq_init(omega_f->eta[i + f->t], pp->ctx);
-        fq_mul(omega_f->eta[i + f->t], f->eta[i + f->t], v[i], pp->ctx);
+        fq_mul(omega_f->eta[i + f->t], f->eta[i], v[i], pp->ctx);
     }
 
     // For omega_f xi
@@ -382,7 +388,7 @@ void cf_eval_off(Key* K, Label* l, Poly* f, uint64_t* id, Poly* omega_f, PublicP
     }
 }
 
-void cf_eval_on(Key* K, uint64_t Delta, uint64_t* id_array, Poly* omega_f, element_t W, PublicPara* pp) {
+void cf_eval_on(VerKey* K, uint64_t Delta, uint64_t* id_array, Poly* omega_f, element_t W, PublicPara* pp) {
     size_t i, j, id;
     size_t t = omega_f->t / 2;
 
@@ -396,9 +402,9 @@ void cf_eval_on(Key* K, uint64_t Delta, uint64_t* id_array, Poly* omega_f, eleme
         fq_init(a[j], pp->ctx);
         fq_init(b[j], pp->ctx);
 
-        PRF_F(a1, b1, K[j].k2, (uint8_t *) &Delta, 8, pp->p);
-        mpz2fq(a[i], a1, pp->ctx);
-        mpz2fq(b[i], b1, pp->ctx);
+        PRF_F(a1, b1, K[j].K->k2, (uint8_t *) &Delta, 8, pp->p);
+        mpz2fq(a[j], a1, pp->ctx);
+        mpz2fq(b[j], b1, pp->ctx);
     }
 
     // Set the input to the \omega_f
@@ -414,6 +420,7 @@ void cf_eval_on(Key* K, uint64_t Delta, uint64_t* id_array, Poly* omega_f, eleme
     
     // Evaluation
     fq_t w;
+    fq_init(w, pp->ctx);
     poly_eval(omega_f, x_in, w, pp->ctx);
 
     // free

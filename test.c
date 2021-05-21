@@ -1,6 +1,27 @@
 #define FP_PRIME 1600
 #include "mkha.h"
 
+/****** DEBUG SECTION ******/
+/* THIS SECTION IS FOR DEBUG PURPOSE */
+void print_id_list(uint64_t* ids, size_t len) {
+    printf("ID_list: ");
+    for (int i = 0; i < len; i++) {
+        printf("%d: %u, ", i, ids[i]);
+    }
+    printf("\n");
+}
+
+void print_key(VerKey* vk, size_t len) {
+    printf("Keys: ");
+    for (int i = 0; i < len; i++) {
+        printf("%d: %u, ", i, vk[i].K->k1);
+    }
+    printf("\n");
+}   
+
+
+/* END OF DEBUG SECTION */
+
 // t is the #message, while n is #user
 // delta is the dataset
 void try(uint32_t lambda, size_t t, size_t n, uint64_t delta) {
@@ -41,16 +62,20 @@ void try(uint32_t lambda, size_t t, size_t n, uint64_t delta) {
     }
     // Generate a random quadratic function
     Poly *f;
+    f = (Poly *) malloc(sizeof(Poly)); 
     poly_rand_init(f, t, pp->ctx);
     Tag* s_out = (Tag *) malloc(sizeof(Tag));
     
     // Evaulate
-    // eval(f, s, s_out, );
+    uint64_t* id_set = (uint64_t *) calloc(n, sizeof(uint64_t));
+    eval(f, s, s_out, id_set, pp);
     
+    print_id_list(id_t_list, t);
+    print_key(vk, n);
     // Verify
-    // int result = ver();
+    int result = ver(f, l, delta, vk, s_out->y, id_set, id_t_list, s_out, pp);
 
-    printf("The result of verification is: ");
+    printf("The result of verification is: %d.\n", result);
 
     // Free all memory
     for (i = 0; i < t; i++) {
@@ -62,6 +87,7 @@ void try(uint32_t lambda, size_t t, size_t n, uint64_t delta) {
     free(m); free(l);
     free(vk);
     free(pp);
+    free(f);
 }
 
 int main() {
