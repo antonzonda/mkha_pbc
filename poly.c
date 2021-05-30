@@ -62,13 +62,32 @@ void poly_eval(Poly* f, fq_t* x, fq_t res, fq_ctx_t ctx) {
     }
 
     for (i = 0; i < f->t; i++) {
-        for (j = 0; i < f->t; i++) {
+        for (j = 0; j < f->t; j++) {
             fq_mul(t1, x[i], x[j], ctx);
             fq_mul(t2, t1, f->xi[j + i * f->t], ctx);
             fq_add(res, t2, res, ctx);
         }
     }
-
+    
     fq_clear(t1, ctx);
     fq_clear(t2, ctx);
+}
+
+void poly_print(Poly* f, fq_ctx_t ctx) {
+    size_t i, j;
+    printf("Eta: ");
+    for (i = 0; i < f->t; i++) {
+        printf("%ld: ", i);
+        fq_print_pretty(f->eta[i], ctx);
+        printf(", ");
+    }
+        
+    printf("Xi: ");
+    for (i = 0; i < f->t; i++) {
+        for (j = 0; j < f->t; j++) {
+            printf("(%ld %ld): ", i, j);
+            fq_print_pretty(f->xi[i * f->t + j], ctx);
+            printf(", ");
+        }
+    }
 }

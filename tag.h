@@ -26,4 +26,7 @@ void tag_clear(Tag* t, size_t n, fq_ctx_t ctx);
 /* Copy the src to res */
 void tag_copy(Tag* res, Tag* src, size_t n, fq_ctx_t ctx);
 
+/* print the tag, for debug purpose */
+void tag_print(Tag* t, size_t n, fq_ctx_t ctx);
+
 #endif

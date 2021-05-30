@@ -4,13 +4,14 @@ void tag_init(Tag* t, size_t n, fq_ctx_t ctx, pairing_t p) {
     size_t r, s, i;
 
     fq_init(t->y, ctx);
+    fq_zero(t->y, ctx);
 
     t->Y = (element_t*) malloc(sizeof(element_t) * n);
     t->Z = (element_t*) malloc(sizeof(element_t) * (n*(n+1)/2));
 
     for (r = 0; r < n; r++) {
         element_init_G1(t->Y[r], p);
-        element_set0(t->Y[r]);
+        element_set1(t->Y[r]);
     }
 
     i = 0;
@@ -57,7 +58,6 @@ void tag_copy(Tag* res, Tag* src, size_t n, fq_ctx_t ctx) {
 
     i = 0;
     for (r = 1; r <= n; r++) {
-        // i = ((r-1)*n + (r-1)*(r-2)/2);
         for (s = r; s <= n; s++) {
             element_set(res->Z[i], src->Z[i]);
             i++;
@@ -65,3 +65,14 @@ void tag_copy(Tag* res, Tag* src, size_t n, fq_ctx_t ctx) {
     }
 }
     
+
+void tag_print(Tag* t, size_t n, fq_ctx_t ctx) {
+    printf("The message: ");
+    fq_print_pretty(t->y, ctx);
+
+    printf(". \tThe Y-list: ");
+    for (size_t i = 0; i < n; i++) {
+        element_printf(" %B, ", t->Y[i]);
+    }
+    printf("\n");
+}

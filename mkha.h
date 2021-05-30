@@ -68,7 +68,7 @@ void auth(VerKey* sk, uint64_t delta, Label* l, fq_t m, Tag* sig, PublicPara* pp
  *  @param[in] f        quadratic function
  *  @param[in] sig      list of tags \sig_i with i \in [t]
  */
-void eval(Poly* f, Tag* sig, Tag* sig_out, uint64_t* id_set, PublicPara* pp);
+void eval(Poly* f, Tag* sig, Tag* sig_out, uint64_t* id_set_eval, PublicPara* pp);
 
 
 /* \cross: Multiplication of two inputs, say x_i x_j */
@@ -86,23 +86,39 @@ void GTE_add(Tag* res, Tag* sig1, Tag* sig2, PublicPara* pp);
  * 
  *
  *  
- *  @param[in] f        f for the labeled program P
- *  @param[in] l        list of t labels, l_1, \ldots, l_t 
+ *  @param[in] omega    for the simplified labeled program P
  *  @param[in] Dleta    dataset identifier
  *  @param[in] vk       a set of verification keys
  *  @param[in] m        message
- *  
- */
-int ver(Poly* f, Label* l, uint64_t Delta, VerKey* vk, fq_t m, uint64_t* id_set, uint64_t* id_t_list,
-        Tag* sigma, PublicPara* pp);
+ *
+ **/  
+int eff_ver(Poly* omega, Label* l, uint64_t Delta, VerKey* vk, fq_t m, uint64_t* id_set,
+        Tag* sigma, size_t len_t, PublicPara* pp);
 
-/* Takes in Key and f outputs omega_f */
-void cf_eval_off(VerKey* K, Label* l, Poly* f, uint64_t* id, Poly* omega_f, PublicPara* pp);
+/* Takes in Key and f outputs omega_f
+ * The function works as VerPrep, 
+ * Note that it outputs a polynomial omega_f with length 2n
+ */
+void cf_eval_off(VerKey* K, Label* l, Poly* f, size_t** id_set, size_t* id_t_list, Poly* omega_f, PublicPara* pp);
 
 /** Outputs W. 
  *  Note that here, |K| = n, and K_i is the key corresponding to the 
  *  id n.
  **/
-void cf_eval_on(VerKey* K, uint64_t Delta, uint64_t* id_array, Poly* omega_f, element_t W, PublicPara* pp);
+void cf_eval_on(VerKey* K, uint64_t Delta, Poly* omega_f, element_t W, PublicPara* pp);
+
+/* The naive implementation of GPE
+ * Would take longer time,
+ * For DEBUG purpose
+ **/
+void GPE_naive(VerKey* vk, Poly* f, uint64_t Delta, Label* l, size_t* id_t_list, element_t W, PublicPara* pp);
+
+/* Auxiliary function,
+ * obtains g^y \prod_{r=1}^n e(Y_r, g)^\alpha_r \prod_{(r, s)\in\Omega_n} Z_{r,s}^{\alpha_r \alpha_s}
+ **/
+void get_W(Tag* sigma, VerKey* vk, element_t W, PublicPara* pp);
+
+/* Clean the memory of pp and key */
+void mkha_clear(PublicPara* pp, VerKey* vk);
 
 #endif 

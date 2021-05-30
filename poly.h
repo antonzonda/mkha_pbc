@@ -34,4 +34,7 @@ void poly_clear(Poly* f, fq_ctx_t ctx);
 /* evaluate the polynomial and output in res */
 void poly_eval(Poly* f, fq_t* x, fq_t res, fq_ctx_t ctx);
 
+/* Print the polynomial, for debug purpose */
+void poly_print(Poly* f, fq_ctx_t ctx);
+
 #endif
