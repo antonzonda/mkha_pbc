@@ -92,7 +92,7 @@ void GTE_add(Tag* res, Tag* sig1, Tag* sig2, PublicPara* pp);
  *  @param[in] m        message
  *
  **/  
-int eff_ver(Poly* omega, Label* l, uint64_t Delta, VerKey* vk, fq_t m, uint64_t* id_set,
+int eff_ver(Poly* omega, Label* l, uint64_t Delta, VerKey* vk, fq_t m, uint64_t* id_set_eval,
         Tag* sigma, size_t len_t, PublicPara* pp);
 
 /* Takes in Key and f outputs omega_f
