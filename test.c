@@ -153,10 +153,10 @@ void try(uint32_t lambda, size_t t, size_t n, size_t k) {
         printf("Eval time is less, NOT so good!\n");
 
     // Free all memory
-    // NOTE there is a memory leack caused by pp
     for (i = 0; i < t; i++) {
         fq_clear(m[i], pp->ctx);
     }
+
     flint_randclear(state);
     fq_clear(m_result, pp->ctx);
     poly_clear(f, pp->ctx);
@@ -172,11 +172,14 @@ void try(uint32_t lambda, size_t t, size_t n, size_t k) {
 int main() {
     // srand(time(NULL));
 
+    // First test
+    printf("Begin test");
     size_t user_size = 2;
     size_t message_size = 55;
     size_t lambda = 64;
     size_t data_set_size = 40;
-    try(lambda, message_size, user_size, data_set_size);
+    for (message_size = 20; message_size < 150; message_size += 15)
+        try(lambda, message_size, user_size, data_set_size);
 
     return 0;
 }
